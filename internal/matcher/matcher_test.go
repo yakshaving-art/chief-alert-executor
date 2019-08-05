@@ -83,10 +83,10 @@ func TestMatching(t *testing.T) {
 		name       string
 		cnf        internal.Configuration
 		alertGroup internal.AlertGroup
-		orErr      string
+		matches    bool
 	}{
 		{
-			"matcher for alertname being present",
+			"matcher for alertname label being present matches",
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
@@ -103,7 +103,186 @@ func TestMatching(t *testing.T) {
 					"alertname": "myalert",
 				},
 			},
-			"",
+			true,
+		},
+		{
+			"matcher for alertname label starting with a matches",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Labels: map[string]string{
+							"alertname": "^a.*$",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonLabels: map[string]string{
+					"alertname": "alert!",
+				},
+			},
+			true,
+		},
+		{
+			"matcher for alertname label starting with a fails to match",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Labels: map[string]string{
+							"alertname": "^a.*$",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonLabels: map[string]string{
+					"alertname": "myalert!",
+				},
+			},
+			false,
+		},
+		{
+			"matcher for alertname label being present fails to match without it",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Labels: map[string]string{
+							"name": ".+",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonLabels: map[string]string{
+					"alertname": "myalert",
+				},
+			},
+			false,
+		},
+		// Annotations
+		{
+			"matcher for annotation being present matches",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Annotations: map[string]string{
+							"hostname": ".+",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonAnnotations: map[string]string{
+					"hostname": "myhostname",
+				},
+			},
+			true,
+		},
+		{
+			"matcher for hostname annotation starting with a matches",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Annotations: map[string]string{
+							"hostname": "^a.*$",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonAnnotations: map[string]string{
+					"hostname": "ahostname",
+				},
+			},
+			true,
+		},
+		{
+			"matcher for hostname annotation starting with a fails to match",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Annotations: map[string]string{
+							"hostname": "^a.*$",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonAnnotations: map[string]string{
+					"hostname": "myhostname",
+				},
+			},
+			false,
+		},
+		{
+			"matcher for hostname annotation being present fails to match without it",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Annotations: map[string]string{
+							"hostname": "^a.*$",
+						},
+						Command:   "echo",
+						Arguments: []string{"alert!"},
+					},
+				},
+			},
+			internal.AlertGroup{
+				CommonAnnotations: map[string]string{
+					"myhostname": "myhostname",
+				},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := assert.New(t)
+			m, err := New(tt.cnf)
+			a.NoError(err)
+			a.NotNil(m)
+
+			ex := m.Match(tt.alertGroup)
+
+			if tt.matches {
+				a.NotNil(ex)
+				a.True(ex.Execute())
+			} else {
+				a.Nil(ex)
+			}
+		})
+	}
+}
+
+func TestCommandExecutionFails(t *testing.T) {
+	tests := []struct {
+		name       string
+		cnf        internal.Configuration
+		alertGroup internal.AlertGroup
+	}{
+		{
+			"empty matcher works, but fails command",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Command:   "/bin/false",
+						Arguments: []string{},
+					},
+				},
+			},
+			internal.AlertGroup{},
 		},
 	}
 	for _, tt := range tests {
@@ -116,8 +295,7 @@ func TestMatching(t *testing.T) {
 			ex := m.Match(tt.alertGroup)
 
 			a.NotNil(ex)
-
-			a.True(ex.Execute())
+			a.False(ex.Execute())
 		})
 	}
 }
