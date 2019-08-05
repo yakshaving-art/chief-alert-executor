@@ -1,4 +1,4 @@
-FROM registry.yakshaving.art:443/tools/multiarch-alpine-base:latest
+FROM registry.yakshaving.art:443/tools/multiarch-alpine-toolset:latest
 
 COPY chief-alert-executor-arm /chief-alert-executor
 
