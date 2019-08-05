@@ -11,8 +11,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"gitlab.com/yakshaving.art/alert-to-shell/internal/metrics"
-	"gitlab.com/yakshaving.art/alert-to-shell/internal/webhook"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/webhook"
 )
 
 // SupportedWebhookVersion is the alert webhook data version that is supported

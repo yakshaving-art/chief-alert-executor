@@ -1,4 +1,4 @@
-module gitlab.com/yakshaving.art/alert-to-shell
+module gitlab.com/yakshaving.art/chief-alert-executor
 
 go 1.12
 

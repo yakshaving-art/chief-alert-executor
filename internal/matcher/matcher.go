@@ -8,8 +8,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"gitlab.com/yakshaving.art/alert-to-shell/internal"
-	"gitlab.com/yakshaving.art/alert-to-shell/internal/metrics"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
 )
 
 // New creates a new Matcher with the provided configuration.

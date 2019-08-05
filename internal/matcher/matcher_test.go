@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/yakshaving.art/alert-to-shell/internal"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal"
 )
 
 func TestNewMatchers(t *testing.T) {

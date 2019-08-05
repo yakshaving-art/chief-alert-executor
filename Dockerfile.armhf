@@ -1,7 +1,7 @@
 FROM registry.yakshaving.art:443/tools/multiarch-alpine-base:latest
 
-COPY alert-to-shell-arm /alert-to-shell
+COPY chief-alert-executor-arm /chief-alert-executor
 
 EXPOSE 8080
 
-ENTRYPOINT [ "/alert-to-shell" ]
+ENTRYPOINT [ "/chief-alert-executor" ]
