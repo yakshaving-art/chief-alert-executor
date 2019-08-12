@@ -1,0 +1,13 @@
+---
+matchers:
+  - command: echo
+    args:
+      - this
+      - alert
+      - is
+      - silly
+    labels:
+      somekey: somevalue.*
+      exact: ^exact-value$
+    annotations:
+      alertname: SomeAlert.*

@@ -10,4 +10,5 @@ require (
 	github.com/sirupsen/logrus v1.4.1
 	github.com/stretchr/testify v1.3.0
 	gitlab.com/yakshaving.art/alertsnitch v0.0.0-20190728181235-709f1ab77ca2
+	gopkg.in/yaml.v2 v2.2.1
 )
