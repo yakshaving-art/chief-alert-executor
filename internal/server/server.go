@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io/ioutil"
+	"sync"
 
 	"net/http"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/matcher"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/webhook"
 )
@@ -24,19 +26,27 @@ type Server struct {
 	r *mux.Router
 
 	configFile string
+	matcher    matcher.Matcher
+
+	m *sync.Mutex
 }
 
-// New returns a new web server
+// New returns a new web server, or fails misserably
 func New(cnfPath string) *Server {
 	r := mux.NewRouter()
 
 	s := Server{
 		r: r,
+		m: &sync.Mutex{},
+	}
+
+	if err := s.loadConfiguration(); err != nil {
+		log.Fatalf("failed to load initial configuration: %s", err)
 	}
 
 	r.HandleFunc("/webhook", s.webhookPost).Methods("POST")
 	r.HandleFunc("/-/health", s.healthyProbe).Methods("GET")
-	r.HandleFunc("/-/reload", s.reloadConfiguration).Methods("POST")
+	r.HandleFunc("/-/reload", s.triggerReloadConfiguration).Methods("POST")
 	r.Handle("/metrics", promhttp.Handler())
 
 	return &s
@@ -80,11 +90,38 @@ func (s Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Do something
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	ex := s.matcher.Match(*data)
+	if ex != nil {
+		ex.Execute()
+	}
 }
 
 func (s Server) healthyProbe(w http.ResponseWriter, r *http.Request) {
 }
 
-func (s Server) reloadConfiguration(w http.ResponseWriter, r *http.Request) {
+func (s *Server) triggerReloadConfiguration(w http.ResponseWriter, r *http.Request) {
+	if err := s.loadConfiguration(); err != nil {
+		http.Error(w, fmt.Sprintf("failed to reload configuration: %s", err),
+			http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) loadConfiguration() error {
+	c, err := Load(s.configFile)
+	if err != nil {
+		return err
+	}
+	m, err := matcher.New(c)
+	if err != nil {
+		return err
+	}
+
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	s.matcher = m
+	return nil
 }

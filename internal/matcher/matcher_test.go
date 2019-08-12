@@ -1,4 +1,4 @@
-package server
+package matcher_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/matcher"
 )
 
 func TestNewMatchers(t *testing.T) {
@@ -67,7 +68,7 @@ func TestNewMatchers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
-			m, err := New(tt.cnf)
+			m, err := matcher.New(tt.cnf)
 			if tt.orErr == "" {
 				a.NoError(err)
 				a.NotNil(m)
@@ -250,7 +251,7 @@ func TestMatching(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
-			m, err := New(tt.cnf)
+			m, err := matcher.New(tt.cnf)
 			a.NoError(err)
 			a.NotNil(m)
 
@@ -258,7 +259,7 @@ func TestMatching(t *testing.T) {
 
 			if tt.matches {
 				a.NotNil(ex)
-				a.True(ex.Execute())
+				ex.Execute()
 			} else {
 				a.Nil(ex)
 			}
@@ -288,14 +289,14 @@ func TestCommandExecutionFails(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := assert.New(t)
-			m, err := New(tt.cnf)
+			m, err := matcher.New(tt.cnf)
 			a.NoError(err)
 			a.NotNil(m)
 
 			ex := m.Match(tt.alertGroup)
 
 			a.NotNil(ex)
-			a.False(ex.Execute())
+			ex.Execute()
 		})
 	}
 }

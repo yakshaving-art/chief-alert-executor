@@ -1,4 +1,4 @@
-package server
+package matcher
 
 import (
 	"fmt"
@@ -118,7 +118,7 @@ func (m matcherMap) Match(ag internal.AlertGroup) Executor {
 
 // Executor represents a unit of work
 type Executor interface {
-	Execute() bool
+	Execute()
 }
 
 type cmdExecutor struct {
@@ -126,7 +126,7 @@ type cmdExecutor struct {
 	args []string
 }
 
-func (c cmdExecutor) Execute() bool {
+func (c cmdExecutor) Execute() {
 	cmd := exec.Command(c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
 	s := fmt.Sprintf("%s", b)
@@ -144,7 +144,6 @@ func (c cmdExecutor) Execute() bool {
 		metrics.CommandsExecuted.WithLabelValues(c.cmd, "1").Inc()
 
 	}
-	return err == nil
 }
 
 func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error) {
