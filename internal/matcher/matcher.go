@@ -129,20 +129,20 @@ type cmdExecutor struct {
 func (c cmdExecutor) Execute() {
 	cmd := exec.Command(c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
-	s := fmt.Sprintf("%s", b)
-	logger := log.WithField("content", s).
+
+	logger := log.WithField("output", fmt.Sprintf("%s", b)).
 		WithField("cmd", c.cmd).
 		WithField("args", strings.Join(c.args, ","))
+
 	if err != nil {
 		logger.WithField("error", err).
-			Error("Failed to execute command")
+			Error("Command failed execution")
 
 		metrics.CommandsExecuted.WithLabelValues(c.cmd, "0").Inc()
 
 	} else {
-		logger.Debug("command executed correctly")
+		logger.Debug("Command executed correctly")
 		metrics.CommandsExecuted.WithLabelValues(c.cmd, "1").Inc()
-
 	}
 }
 
