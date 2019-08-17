@@ -90,6 +90,8 @@ func (s Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.AlertsReceivedTotal.Inc()
+
 	s.m.Lock()
 	defer s.m.Unlock()
 

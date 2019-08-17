@@ -26,12 +26,12 @@ var (
 
 // Exported metrics
 var (
-	AlertsReceivedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+	AlertsReceivedTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: "alerts",
 		Name:      "received_total",
 		Help:      "total number of valid alerts received",
-	}, []string{"receiver", "status"})
+	})
 	WebhooksReceivedTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Subsystem: "webhooks",
@@ -78,9 +78,13 @@ func init() {
 	prometheus.MustRegister(bootTime)
 	prometheus.MustRegister(buildInfo)
 
-	prometheus.MustRegister(AlertsReceivedTotal)
-
-	prometheus.MustRegister(WebhooksReceivedTotal)
-	prometheus.MustRegister(InvalidWebhooksTotal)
+	prometheus.MustRegister(
+		AlertsReceivedTotal,
+		AlertsMissed,
+		AlertsMatchedToCommand,
+		CommandsExecuted,
+		InvalidWebhooksTotal,
+		WebhooksReceivedTotal,
+	)
 
 }
