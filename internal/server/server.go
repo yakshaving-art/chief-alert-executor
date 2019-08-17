@@ -21,44 +21,58 @@ import (
 // by this app
 const SupportedWebhookVersion = "4"
 
+// Args are the arguments for building a new server
+type Args struct {
+	MetricsPath    string
+	Address        string
+	ConfigFilename string
+}
+
 // Server represents a web server that processes webhooks
 type Server struct {
 	r *mux.Router
 
 	configFile string
+	address    string
 	matcher    matcher.Matcher
 
 	m *sync.Mutex
 }
 
 // New returns a new web server, or fails misserably
-func New(cnfPath string) *Server {
+func New(args Args) *Server {
 	r := mux.NewRouter()
 
-	s := Server{
+	log.Debugf("Creating new server with args: %#v", args)
+
+	s := &Server{
 		r: r,
+
+		configFile: args.ConfigFilename,
+		address:    args.Address,
+
 		m: &sync.Mutex{},
 	}
 
-	if err := s.loadConfiguration(); err != nil {
+	if err := s.LoadConfiguration(); err != nil {
 		log.Fatalf("failed to load initial configuration: %s", err)
 	}
 
+	r.Handle(args.MetricsPath, promhttp.Handler())
 	r.HandleFunc("/webhook", s.webhookPost).Methods("POST")
 	r.HandleFunc("/-/health", s.healthyProbe).Methods("GET")
 	r.HandleFunc("/-/reload", s.triggerReloadConfiguration).Methods("POST")
-	r.Handle("/metrics", promhttp.Handler())
 
-	return &s
+	return s
 }
 
 // Start starts a new server on the given address
-func (s Server) Start(address string) {
-	log.Println("Starting listener on", address)
-	log.Fatal(http.ListenAndServe(address, s.r))
+func (s *Server) Start() {
+	log.Println("Starting listener on", s.address)
+	log.Fatal(http.ListenAndServe(s.address, s.r))
 }
 
-func (s Server) webhookPost(w http.ResponseWriter, r *http.Request) {
+func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	metrics.WebhooksReceivedTotal.Inc()
@@ -101,17 +115,21 @@ func (s Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) healthyProbe(w http.ResponseWriter, r *http.Request) {
+func (s *Server) healthyProbe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) triggerReloadConfiguration(w http.ResponseWriter, r *http.Request) {
-	if err := s.loadConfiguration(); err != nil {
+	log.Infoln("reloading configuration...")
+	if err := s.LoadConfiguration(); err != nil {
 		http.Error(w, fmt.Sprintf("failed to reload configuration: %s", err),
 			http.StatusInternalServerError)
+	} else {
+		log.Infoln("configuration reloaded correctly")
 	}
 }
 
-func (s *Server) loadConfiguration() error {
+// LoadConfiguration reloads the configuration file
+func (s *Server) LoadConfiguration() error {
 	c, err := Load(s.configFile)
 	if err != nil {
 		return err
