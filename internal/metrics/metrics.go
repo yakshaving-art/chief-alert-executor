@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	namespace = "alerts_to_shell"
+	namespace = "chief_alert_executor"
 
 	bootTime = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: namespace,
