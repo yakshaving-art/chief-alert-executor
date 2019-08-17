@@ -51,7 +51,7 @@ var (
 			Subsystem: "alert",
 			Name:      "match_total",
 			Help:      "total number of alerts matched to a command",
-		}, []string{"command"})
+		}, []string{"matcher"})
 
 	AlertsMissed = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -67,7 +67,7 @@ var (
 			Subsystem: "command",
 			Name:      "execution_total",
 			Help:      "total number of command executions",
-		}, []string{"command", "successful"})
+		}, []string{"matcher", "successful"})
 )
 
 func init() {

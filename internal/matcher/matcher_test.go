@@ -21,10 +21,33 @@ func TestNewMatchers(t *testing.T) {
 			"",
 		},
 		{
+			"empty name fails",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Command: "echo",
+					},
+				},
+			},
+			`Metric name can't be empty in internal.MatcherConfiguration{Name:"", Labels:map[string]string(nil), Annotations:map[string]string(nil), Command:"echo", Arguments:[]string(nil)}`,
+		}, {
+			"empty cmd fails",
+			internal.Configuration{
+				Matchers: []internal.MatcherConfiguration{
+					{
+						Name: "somename",
+					},
+				},
+			},
+			`Command can't be empty in internal.MatcherConfiguration{Name:"somename", Labels:map[string]string(nil), Annotations:map[string]string(nil), Command:"", Arguments:[]string(nil)}`,
+		},
+		{
 			"one label and one configuration",
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "Some Name",
+						Command: "echo",
 						Labels: map[string]string{
 							"alertname": "bla",
 						},
@@ -41,6 +64,8 @@ func TestNewMatchers(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "Invalid Label Regex",
+						Command: "echo",
 						Labels: map[string]string{
 							"invalid_label_regex": "[",
 						},
@@ -55,6 +80,8 @@ func TestNewMatchers(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "Invalid Annotation Regex",
+						Command: "echo",
 						Annotations: map[string]string{
 							"invalid_annotation_regex": "[",
 						},
@@ -91,10 +118,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "somename",
+						Command: "echo",
 						Labels: map[string]string{
 							"alertname": ".+",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -111,10 +139,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "somename",
+						Command: "echo",
 						Labels: map[string]string{
 							"alertname": "^a.*$",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -131,10 +160,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "somename",
+						Command: "echo",
 						Labels: map[string]string{
 							"alertname": "^a.*$",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -151,6 +181,7 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name: "somename",
 						Labels: map[string]string{
 							"name": ".+",
 						},
@@ -172,10 +203,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "somename",
+						Command: "echo",
 						Annotations: map[string]string{
 							"hostname": ".+",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -192,10 +224,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "Somename",
+						Command: "echo",
 						Annotations: map[string]string{
 							"hostname": "^a.*$",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -212,10 +245,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "Somename",
+						Command: "echo",
 						Annotations: map[string]string{
 							"hostname": "^a.*$",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -232,10 +266,11 @@ func TestMatching(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:    "somename",
+						Command: "echo",
 						Annotations: map[string]string{
 							"hostname": "^a.*$",
 						},
-						Command:   "echo",
 						Arguments: []string{"alert!"},
 					},
 				},
@@ -278,6 +313,7 @@ func TestCommandExecutionFails(t *testing.T) {
 			internal.Configuration{
 				Matchers: []internal.MatcherConfiguration{
 					{
+						Name:      "somename",
 						Command:   "/bin/false",
 						Arguments: []string{},
 					},

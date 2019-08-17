@@ -39,6 +39,7 @@ type Configuration struct {
 // MatcherConfiguration provides configuration to match alerts and map them to a
 // command with arguments
 type MatcherConfiguration struct {
+	Name        string            `yaml:"name"`
 	Labels      map[string]string `yaml:"labels"`
 	Annotations map[string]string `yaml:"annotations"`
 	Command     string            `yaml:"command"`

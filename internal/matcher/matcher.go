@@ -37,6 +37,7 @@ type Matcher interface {
 }
 
 type oneAlertMatcher struct {
+	matcherName string
 	labels      map[string]*regexp.Regexp
 	annotations map[string]*regexp.Regexp
 
@@ -50,14 +51,16 @@ func (m oneAlertMatcher) Match(ag internal.AlertGroup) bool {
 		if !ok {
 			log.WithFields(log.Fields{
 				"alertgroup": ag,
-				"annotation": name}).
-				Debugf("alert does not contain expected annotation")
+				"annotation": name,
+				"matcher":    m.matcherName,
+			}).Debugf("alert does not contain expected annotation")
 			return false
 		}
 		if !regex.MatchString(value) {
 			log.WithField("alertgroup", ag).
 				WithField("annotation", name).
 				WithField("value", value).
+				WithField("matcher", m.matcherName).
 				Debugf("alert does not match expected regex for annotation")
 			return false
 		}
@@ -68,14 +71,16 @@ func (m oneAlertMatcher) Match(ag internal.AlertGroup) bool {
 		if !ok {
 			log.WithFields(log.Fields{
 				"alertgroup": ag,
-				"label":      name}).
-				Debugf("alert does not contain expected label")
+				"label":      name,
+				"matcher":    m.matcherName,
+			}).Debugf("alert does not contain expected label")
 			return false
 		}
 		if !regex.MatchString(value) {
 			log.WithField("alertgroup", ag).
 				WithField("label", name).
 				WithField("value", value).
+				WithField("matcher", m.matcherName).
 				Debugf("alert does not match expected regex for label")
 			return false
 		}
@@ -97,7 +102,7 @@ func (m matcherMap) Match(ag internal.AlertGroup) Executor {
 		if matcher.Match(ag) {
 
 			metrics.AlertsMatchedToCommand.
-				WithLabelValues(matcher.cmd).Inc()
+				WithLabelValues(matcher.matcherName).Inc()
 
 			log.WithFields(log.Fields{
 				"alertgroup": ag,
@@ -122,8 +127,9 @@ type Executor interface {
 }
 
 type cmdExecutor struct {
-	cmd  string
-	args []string
+	matcherName string
+	cmd         string
+	args        []string
 }
 
 func (c cmdExecutor) Execute() {
@@ -132,21 +138,30 @@ func (c cmdExecutor) Execute() {
 
 	logger := log.WithField("output", fmt.Sprintf("%s", b)).
 		WithField("cmd", c.cmd).
+		WithField("matcher", c.matcherName).
 		WithField("args", strings.Join(c.args, ","))
 
 	if err != nil {
 		logger.WithField("error", err).
 			Error("Command failed execution")
 
-		metrics.CommandsExecuted.WithLabelValues(c.cmd, "0").Inc()
+		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "false").Inc()
 
 	} else {
 		logger.Debug("Command executed correctly")
-		metrics.CommandsExecuted.WithLabelValues(c.cmd, "1").Inc()
+		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "true").Inc()
 	}
 }
 
 func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error) {
+
+	if strings.TrimSpace(mc.Name) == "" {
+		return nil, fmt.Errorf("Metric name can't be empty in %#v", mc)
+	}
+	if strings.TrimSpace(mc.Command) == "" {
+		return nil, fmt.Errorf("Command can't be empty in %#v", mc)
+	}
+
 	labels := make(map[string]*regexp.Regexp)
 	for l, r := range mc.Labels {
 		reg, err := regexp.Compile(r)
@@ -169,7 +184,8 @@ func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error)
 		labels:      labels,
 		annotations: annotations,
 
-		cmd:  mc.Command,
-		args: mc.Arguments,
+		matcherName: strings.TrimSpace(mc.Name),
+		cmd:         mc.Command,
+		args:        mc.Arguments,
 	}, nil
 }
