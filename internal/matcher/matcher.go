@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -110,8 +111,9 @@ func (m matcherMap) Match(ag internal.AlertGroup) Executor {
 				Debugf("matched alergroup")
 
 			return cmdExecutor{
-				cmd:  matcher.cmd,
-				args: matcher.args,
+				matcherName: matcher.matcherName,
+				cmd:         matcher.cmd,
+				args:        matcher.args,
 			}
 		}
 	}
@@ -133,8 +135,10 @@ type cmdExecutor struct {
 }
 
 func (c cmdExecutor) Execute() {
+	startTime := time.Now()
 	cmd := exec.Command(c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
+	executionTime := time.Now().Sub(startTime)
 
 	logger := log.WithField("output", fmt.Sprintf("%s", b)).
 		WithField("cmd", c.cmd).
@@ -146,10 +150,12 @@ func (c cmdExecutor) Execute() {
 			Error("Command failed execution")
 
 		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "false").Inc()
+		metrics.CommandExecutionSeconds.WithLabelValues(c.matcherName, "false").Observe(executionTime.Seconds())
 
 	} else {
 		logger.Debug("Command executed correctly")
 		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "true").Inc()
+		metrics.CommandExecutionSeconds.WithLabelValues(c.matcherName, "true").Observe(executionTime.Seconds())
 	}
 }
 

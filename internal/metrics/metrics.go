@@ -68,6 +68,14 @@ var (
 			Name:      "execution_total",
 			Help:      "total number of command executions",
 		}, []string{"matcher", "successful"})
+
+	CommandExecutionSeconds = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace:  namespace,
+		Subsystem:  "command",
+		Name:       "execution_seconds",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		Help:       "command execution seconds summary",
+	}, []string{"matcher", "successful"})
 )
 
 func init() {
@@ -83,6 +91,7 @@ func init() {
 		AlertsMissed,
 		AlertsMatchedToCommand,
 		CommandsExecuted,
+		CommandExecutionSeconds,
 		InvalidWebhooksTotal,
 		WebhooksReceivedTotal,
 	)
