@@ -3,6 +3,29 @@
 Receives Prometheus Alerts, Matches them with rules, and then executes the
 configured scripts with the provided arguments
 
+## How does this work?
+
+```mermaid
+graph LR
+subgraph Prometheus
+  P[Prometheus] -->|Fire Alert| A[AlertManager]
+end
+
+subgraph "Chief Alert Executor"
+  A --> |Push Alert| C[Chief Alert Executor]
+  CN(Matchers Config<br/>1:1 Command+Args/Alert) --- C
+  C --> |Match Alert| M((Matchers))
+  style C fill:#f9f,stroke:#333,stroke-width:4px
+  style CN fill:#ccf,stroke:#f66,stroke-width:2px,stroke-dasharray: 5, 5
+end
+subgraph Shell
+  M --> |Execute Command| E(Fork+Exec)
+  E -.-> Ssh
+  E -.-> Curl
+  E -.-> YouNameIt
+end
+```
+
 ## Configuring Matchers
 
 A sample configuration for a single alert matcher that would match the
