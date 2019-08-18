@@ -1,0 +1,14 @@
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: chief-alert-executor
+  name: chief-alert-executor
+spec:
+  selector:
+    app: chief-alert-executor
+  ports:
+  - name: chief-alert-executor
+    port: 9099

@@ -81,6 +81,11 @@ route:
     continue: true
 ```
 
+## Running in Kubernetes
+
+Chief Alert Executor provides a [sample configuration][2] to run in
+kubernetes.
+
 ## Disclaimers
 
 ### Common Labels and Annotations
@@ -113,3 +118,4 @@ As a general recomendation, _resolved_ alerts should not be sent as the tool
 is not filtering for firing/resolved alerts.
 
 [1]: ./internal/webhook/sample-payload.json
+[2]: ./k8s/
