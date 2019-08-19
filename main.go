@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"os"
+
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/messenger"
 
 	"github.com/sirupsen/logrus"
 
@@ -22,10 +25,18 @@ func main() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	m := messenger.Noop()
+
+	slackURL := os.Getenv("SLACK_URL")
+	if slackURL != "" {
+		m = messenger.Slack(slackURL)
+	}
+
 	s := server.New(server.Args{
 		Address:        *address,
 		MetricsPath:    *metricsPath,
 		ConfigFilename: *configFilename,
+		Messenger:      m,
 	})
 
 	s.Start()

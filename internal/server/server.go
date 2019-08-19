@@ -3,17 +3,18 @@ package server
 import (
 	"fmt"
 	"io/ioutil"
-	"sync"
-
 	"net/http"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/matcher"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/templater"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/webhook"
 )
 
@@ -26,6 +27,8 @@ type Args struct {
 	MetricsPath    string
 	Address        string
 	ConfigFilename string
+
+	Messenger internal.Messenger
 }
 
 // Server represents a web server that processes webhooks
@@ -35,6 +38,9 @@ type Server struct {
 	configFile string
 	address    string
 	matcher    matcher.Matcher
+	templater  templater.Templater
+
+	messenger internal.Messenger
 
 	m *sync.Mutex
 }
@@ -50,6 +56,8 @@ func New(args Args) *Server {
 
 		configFile: args.ConfigFilename,
 		address:    args.Address,
+
+		messenger: args.Messenger,
 
 		m: &sync.Mutex{},
 	}
@@ -87,7 +95,7 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 
 	log.Debugln("Received webhook payload", string(body))
 
-	data, err := webhook.Parse(body)
+	alertGroup, err := webhook.Parse(body)
 	if err != nil {
 		metrics.InvalidWebhooksTotal.Inc()
 
@@ -96,11 +104,12 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if data.Version != SupportedWebhookVersion {
+	if alertGroup.Version != SupportedWebhookVersion {
 		metrics.InvalidWebhooksTotal.Inc()
 
-		log.Printf("Invalid payload: webhook version %s is not supported\n", data.Version)
-		http.Error(w, fmt.Sprintf("Invalid payload: webhook version %s is not supported", data.Version), http.StatusBadRequest)
+		log.Printf("Invalid payload: webhook version %s is not supported\n", alertGroup.Version)
+		http.Error(w, fmt.Sprintf("Invalid payload: webhook version %s is not supported",
+			alertGroup.Version), http.StatusBadRequest)
 		return
 	}
 
@@ -109,9 +118,69 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	ex := s.matcher.Match(*data)
-	if ex != nil {
-		ex.Execute()
+	match := s.matcher.Match(*alertGroup)
+	if match == nil {
+		return
+	}
+
+	templater := s.templater.WithTemplate(match.Template())
+	logger := log.WithField("templater", templater).
+		WithField("payload", *alertGroup).
+		WithField("match", match)
+
+	matchPayload := struct {
+		AlertGroup internal.AlertGroup
+		Match      matcher.Match
+	}{
+		*alertGroup,
+		match,
+	}
+
+	message, err := templater.Expand(internal.MatchEvent, matchPayload)
+
+	if err != nil {
+		logger.WithField("event", "match").
+			Warnf("failed to expand template: %s", err)
+	} else {
+		err = s.messenger.Send(message)
+		if err != nil {
+			logger.WithField("event", "match").
+				WithField("message", message).
+				Warnf("failed to send message: %s", err)
+		}
+	}
+
+	output, err := match.Execute()
+	payload := struct {
+		AlertGroup internal.AlertGroup
+		Match      matcher.Match
+		Output     string
+		Err        error
+	}{
+		*alertGroup,
+		match,
+		output,
+		err,
+	}
+
+	logger = logger.WithField("payload", payload)
+	if err == nil {
+		message, err = templater.Expand(internal.SuccessEvent, payload)
+		if err != nil {
+			logger.WithField("event", "success").
+				Warnf("failed to expand message: %s", err)
+		}
+	} else {
+		message, err = templater.Expand(internal.FailureEvent, payload)
+		if err != nil {
+			logger.WithField("event", "failure").
+				Warnf("failed to expand message: %s", err)
+		}
+	}
+
+	if err = s.messenger.Send(message); err != nil {
+		logger.WithField("message", message).
+			Errorf("failed to send message: %s", err)
 	}
 }
 
@@ -143,5 +212,9 @@ func (s *Server) LoadConfiguration() error {
 	defer s.m.Unlock()
 
 	s.matcher = m
+	s.templater = templater.Templater{
+		DefaultTemplate: c.DefaultTemplate,
+	}
+
 	return nil
 }

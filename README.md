@@ -43,6 +43,30 @@ matchers:
       host_tier: ^myhostname$
 ```
 
+## Announcing to Slack
+
+To announce to slack it's necessary to setup an environment variable named
+**SLACK_URL** containing an incomming webhook url, and at the very least a set
+of default templates in the top level of the configuration file to render the
+messages to slack
+
+```yaml
+default_template:
+  on_match: 'Matched Alert: {{ .AlertGroup.CommonLabels.alertname }}'
+  on_success: 'Success executing matcher {{ .Match.Name }}: {{ .Output }}'
+  on_failure: 'Failure executing matcher {{ .Match.Name }}: {{ .Err }}'
+```
+
+Additionally, any matcher may contain a template definition with the same
+block defined inside the scope of the matcher. In this case, the specific
+matcher template will override the default templating configuration.
+
+These templates are parsed and expanded using Go `text/template` package, so
+refer to the Go language documentation for further explanations.
+
+If the environment variable is not present, a null messenger will be used
+which will log all the messages at debug level for debugging purposes.
+
 ## Arguments
 
 ### -address string

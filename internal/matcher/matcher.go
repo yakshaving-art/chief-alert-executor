@@ -34,7 +34,7 @@ func New(cnf internal.Configuration) (Matcher, error) {
 // Matcher is the interface of the whatever loads the configuration and then is
 // used to match an alert to an executor
 type Matcher interface {
-	Match(internal.AlertGroup) Executor
+	Match(internal.AlertGroup) Match
 }
 
 type oneAlertMatcher struct {
@@ -42,8 +42,9 @@ type oneAlertMatcher struct {
 	labels      map[string]*regexp.Regexp
 	annotations map[string]*regexp.Regexp
 
-	cmd  string
-	args []string
+	template *internal.MessageTemplate
+	cmd      string
+	args     []string
 }
 
 func (m oneAlertMatcher) Match(ag internal.AlertGroup) bool {
@@ -98,7 +99,7 @@ type matcherMap struct {
 	matchers []*oneAlertMatcher
 }
 
-func (m matcherMap) Match(ag internal.AlertGroup) Executor {
+func (m matcherMap) Match(ag internal.AlertGroup) Match {
 	for _, matcher := range m.matchers {
 		if matcher.Match(ag) {
 
@@ -111,6 +112,7 @@ func (m matcherMap) Match(ag internal.AlertGroup) Executor {
 				Debugf("matched alergroup")
 
 			return cmdExecutor{
+				template:    matcher.template,
 				matcherName: matcher.matcherName,
 				cmd:         matcher.cmd,
 				args:        matcher.args,
@@ -123,24 +125,36 @@ func (m matcherMap) Match(ag internal.AlertGroup) Executor {
 	return nil
 }
 
-// Executor represents a unit of work
-type Executor interface {
-	Execute()
+// Match represents a unit of work
+type Match interface {
+	Name() string
+	Template() *internal.MessageTemplate
+	Execute() (string, error)
 }
 
 type cmdExecutor struct {
+	template    *internal.MessageTemplate
 	matcherName string
 	cmd         string
 	args        []string
 }
 
-func (c cmdExecutor) Execute() {
+func (c cmdExecutor) Name() string {
+	return c.matcherName
+}
+
+func (c cmdExecutor) Template() *internal.MessageTemplate {
+	return c.template
+}
+
+func (c cmdExecutor) Execute() (string, error) {
 	startTime := time.Now()
 	cmd := exec.Command(c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
 	executionTime := time.Now().Sub(startTime)
 
-	logger := log.WithField("output", fmt.Sprintf("%s", b)).
+	output := fmt.Sprintf("%s", b)
+	logger := log.WithField("output", output).
 		WithField("cmd", c.cmd).
 		WithField("matcher", c.matcherName).
 		WithField("args", strings.Join(c.args, ","))
@@ -151,12 +165,13 @@ func (c cmdExecutor) Execute() {
 
 		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "false").Inc()
 		metrics.CommandExecutionSeconds.WithLabelValues(c.matcherName, "false").Observe(executionTime.Seconds())
-
-	} else {
-		logger.Debug("Command executed correctly")
-		metrics.CommandsExecuted.WithLabelValues(c.matcherName, "true").Inc()
-		metrics.CommandExecutionSeconds.WithLabelValues(c.matcherName, "true").Observe(executionTime.Seconds())
+		return output, err
 	}
+
+	logger.Debug("Command executed correctly")
+	metrics.CommandsExecuted.WithLabelValues(c.matcherName, "true").Inc()
+	metrics.CommandExecutionSeconds.WithLabelValues(c.matcherName, "true").Observe(executionTime.Seconds())
+	return output, nil
 }
 
 func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error) {
@@ -191,6 +206,7 @@ func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error)
 		annotations: annotations,
 
 		matcherName: strings.TrimSpace(mc.Name),
+		template:    mc.Template,
 		cmd:         mc.Command,
 		args:        mc.Arguments,
 	}, nil
