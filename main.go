@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	_ "gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal/server"
 )
 
@@ -29,6 +29,8 @@ func main() {
 
 	slackURL := os.Getenv("SLACK_URL")
 	if slackURL != "" {
+		logrus.Info("Slack notifications enabled")
+		metrics.SlackUp.Set(1)
 		m = messenger.Slack(slackURL)
 	}
 

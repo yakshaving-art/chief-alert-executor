@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"gitlab.com/yakshaving.art/chief-alert-executor/internal/metrics"
+
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/yakshaving.art/chief-alert-executor/internal"
@@ -25,6 +27,7 @@ func Slack(url string) internal.Messenger {
 
 func (s slackMessenger) Send(event internal.Event, message string) error {
 	if strings.TrimSpace(message) == "" {
+		metrics.SlackNotificationsTotal.WithLabelValues(string(event), "empty-message").Inc()
 		logrus.Debugf("received empty message to send, ignoring")
 		return nil
 	}
@@ -38,11 +41,13 @@ func (s slackMessenger) Send(event internal.Event, message string) error {
 		},
 	})
 	if err != nil {
+		metrics.SlackNotificationsTotal.WithLabelValues(string(event), "encoding-error").Inc()
 		return fmt.Errorf("failed to encode json with the message %s: %s", message, err)
 	}
 
 	resp, err := http.Post(s.url, "application/json", bytes.NewBuffer(b))
 	if err != nil {
+		metrics.SlackNotificationsTotal.WithLabelValues(string(event), "error").Inc()
 		return fmt.Errorf("Failed to POST to slack: %s", err)
 	}
 
@@ -50,6 +55,7 @@ func (s slackMessenger) Send(event internal.Event, message string) error {
 		WithField("message", message).
 		Debugf("posted message to slack")
 
+	metrics.SlackNotificationsTotal.WithLabelValues(string(event), "sent").Inc()
 	return nil
 }
 
