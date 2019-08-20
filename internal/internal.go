@@ -54,7 +54,7 @@ type MatcherConfiguration struct {
 
 // Messenger represents an object capable of sending a message to somewhere
 type Messenger interface {
-	Send(string) error
+	Send(Event, string) error
 }
 
 // MessageTemplate is the message to send when the match is successful
@@ -65,7 +65,7 @@ type MessageTemplate struct {
 }
 
 // GetMessage returns the template according to the event type
-func (m MessageTemplate) GetMessage(event string) string {
+func (m MessageTemplate) GetMessage(event Event) string {
 	switch event {
 	case MatchEvent:
 		return m.OnMatch
@@ -83,7 +83,21 @@ func (m MessageTemplate) GetMessage(event string) string {
 
 // Constants used to signal the different kind of events
 const (
-	MatchEvent   = "match"
-	SuccessEvent = "success"
-	FailureEvent = "failure"
+	MatchEvent   = Event("match")
+	SuccessEvent = Event("success")
+	FailureEvent = Event("failure")
 )
+
+// Event is an extension of a string used to map the different colors of the events
+type Event string
+
+// Color returns the color given the kind of event it is
+func (e Event) Color() string {
+	switch e {
+	case SuccessEvent:
+		return "#008800" // Green
+	case FailureEvent:
+		return "#AA0000" // Red
+	}
+	return "" // Matchevent will be grey
+}

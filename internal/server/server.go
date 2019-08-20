@@ -136,13 +136,14 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		match,
 	}
 
+	event := internal.MatchEvent
 	message, err := templater.Expand(internal.MatchEvent, matchPayload)
 
 	if err != nil {
 		logger.WithField("event", "match").
 			Warnf("failed to expand template: %s", err)
 	} else {
-		err = s.messenger.Send(message)
+		err = s.messenger.Send(event, message)
 		if err != nil {
 			logger.WithField("event", "match").
 				WithField("message", message).
@@ -165,12 +166,14 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 
 	logger = logger.WithField("payload", payload)
 	if err == nil {
+		event = internal.SuccessEvent
 		message, err = templater.Expand(internal.SuccessEvent, payload)
 		if err != nil {
 			logger.WithField("event", "success").
 				Warnf("failed to expand message: %s", err)
 		}
 	} else {
+		event = internal.FailureEvent
 		message, err = templater.Expand(internal.FailureEvent, payload)
 		if err != nil {
 			logger.WithField("event", "failure").
@@ -178,7 +181,7 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err = s.messenger.Send(message); err != nil {
+	if err = s.messenger.Send(event, message); err != nil {
 		logger.WithField("message", message).
 			Errorf("failed to send message: %s", err)
 	}

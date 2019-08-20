@@ -13,7 +13,7 @@ func Noop() internal.Messenger {
 	return noopMessenger{}
 }
 
-func (noopMessenger) Send(message string) error {
-	logrus.WithField("message", message).Debugf("Noop message.")
+func (noopMessenger) Send(event internal.Event, message string) error {
+	logrus.WithField("message", message).WithField("event", event).Debugf("Noop message.")
 	return nil
 }

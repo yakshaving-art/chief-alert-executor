@@ -25,7 +25,7 @@ func (m Templater) WithTemplate(template *internal.MessageTemplate) Templater {
 
 // Expand send the message by expanding the template to then send the
 // actual message
-func (m Templater) Expand(forEvent string, payload interface{}) (string, error) {
+func (m Templater) Expand(forEvent internal.Event, payload interface{}) (string, error) {
 	var t *internal.MessageTemplate
 	// DefaultTemplate has preference over the specific template
 	if m.DefaultTemplate != nil {
@@ -41,7 +41,7 @@ func (m Templater) Expand(forEvent string, payload interface{}) (string, error) 
 		return "", nil
 	}
 
-	tmpl, err := template.New(forEvent).Parse(t.GetMessage(forEvent))
+	tmpl, err := template.New(string(forEvent)).Parse(t.GetMessage(forEvent))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse %s template %#v: %s", forEvent, t, err)
 	}

@@ -14,7 +14,7 @@ func TestTemplater(t *testing.T) {
 		name      string
 		templater templater.Templater
 		specific  *internal.MessageTemplate
-		event     string
+		event     internal.Event
 		payload   interface{}
 		expected  string
 	}{

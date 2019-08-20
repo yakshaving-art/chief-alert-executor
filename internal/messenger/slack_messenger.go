@@ -23,13 +23,20 @@ func Slack(url string) internal.Messenger {
 	}
 }
 
-func (s slackMessenger) Send(message string) error {
+func (s slackMessenger) Send(event internal.Event, message string) error {
 	if strings.TrimSpace(message) == "" {
 		logrus.Debugf("received empty message to send, ignoring")
 		return nil
 	}
 
-	b, err := json.Marshal(slackMessage{message})
+	b, err := json.Marshal(slackPayload{
+		[]slackAttachment{
+			slackAttachment{
+				event.Color(),
+				message,
+			},
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to encode json with the message %s: %s", message, err)
 	}
@@ -46,6 +53,11 @@ func (s slackMessenger) Send(message string) error {
 	return nil
 }
 
-type slackMessage struct {
-	Text string `json:"text"`
+type slackPayload struct {
+	Attachments []slackAttachment `json:"attachments"`
+}
+
+type slackAttachment struct {
+	Color string `json:"color"`
+	Text  string `json:"text"`
 }
