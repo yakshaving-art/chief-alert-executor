@@ -79,8 +79,8 @@ release_latest:
     - docker manifest annotate ${CI_REGISTRY_IMAGE}
         ${CI_REGISTRY_IMAGE}:armhf-latest --os linux --arch arm --variant 6
     - docker manifest push ${CI_REGISTRY_IMAGE}:latest
-  only:
-    - master
+  # only:
+  #   - master
 
 release_tag:
   <<: *docker
