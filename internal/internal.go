@@ -95,9 +95,9 @@ type Event string
 func (e Event) Color() string {
 	switch e {
 	case SuccessEvent:
-		return "#008800" // Green
+		return "good" // Green
 	case FailureEvent:
-		return "#AA0000" // Red
+		return "danger" // Red
 	}
-	return "" // Matchevent will be grey
+	return "warning" // Matchevent will be yellow
 }
