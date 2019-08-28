@@ -49,8 +49,8 @@ type MatcherConfiguration struct {
 	Annotations map[string]string `yaml:"annotations"`
 	Command     string            `yaml:"command"`
 	Arguments   []string          `yaml:"args"`
-<<<<<<< Updated upstream
 	Template    *MessageTemplate  `yaml:"template,omitempty"`
+	Timeout     int               `yaml:"timeout_seconds"`
 }
 
 // Messenger represents an object capable of sending a message to somewhere
@@ -101,7 +101,4 @@ func (e Event) Color() string {
 		return "danger" // Red
 	}
 	return "warning" // Matchevent will be yellow
-=======
-	Timeout     int               `yaml:"timeout_seconds"`
->>>>>>> Stashed changes
 }

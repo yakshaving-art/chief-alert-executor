@@ -43,16 +43,11 @@ type oneAlertMatcher struct {
 	labels      map[string]*regexp.Regexp
 	annotations map[string]*regexp.Regexp
 
-<<<<<<< Updated upstream
 	template *internal.MessageTemplate
 	cmd      string
 	args     []string
-=======
-	cmd  string
-	args []string
 
 	timeout int
->>>>>>> Stashed changes
 }
 
 func (m oneAlertMatcher) Match(ag internal.AlertGroup) bool {
@@ -149,7 +144,6 @@ type cmdExecutor struct {
 	timeout     time.Duration
 }
 
-<<<<<<< Updated upstream
 func (c cmdExecutor) Name() string {
 	return c.matcherName
 }
@@ -159,12 +153,9 @@ func (c cmdExecutor) Template() *internal.MessageTemplate {
 }
 
 func (c cmdExecutor) Execute() (string, error) {
-=======
-func (c cmdExecutor) Execute() {
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
->>>>>>> Stashed changes
 	startTime := time.Now()
 	cmd := exec.CommandContext(ctx, c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
