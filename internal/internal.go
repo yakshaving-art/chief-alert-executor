@@ -50,6 +50,7 @@ type MatcherConfiguration struct {
 	Command     string            `yaml:"command"`
 	Arguments   []string          `yaml:"args"`
 	Template    *MessageTemplate  `yaml:"template,omitempty"`
+	Timeout     int               `yaml:"timeout_seconds"`
 }
 
 // Messenger represents an object capable of sending a message to somewhere
