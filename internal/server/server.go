@@ -28,7 +28,8 @@ type Args struct {
 	Address        string
 	ConfigFilename string
 
-	Messenger internal.Messenger
+	Messenger   internal.Messenger
+	Concurrency int
 }
 
 // Server represents a web server that processes webhooks
@@ -42,7 +43,8 @@ type Server struct {
 
 	messenger internal.Messenger
 
-	m *sync.Mutex
+	m       *sync.Mutex
+	matches chan matchPayload
 }
 
 // New returns a new web server, or fails misserably
@@ -60,6 +62,8 @@ func New(args Args) *Server {
 		messenger: args.Messenger,
 
 		m: &sync.Mutex{},
+
+		matches: make(chan matchPayload, args.Concurrency),
 	}
 
 	if err := s.LoadConfiguration(); err != nil {
@@ -76,8 +80,70 @@ func New(args Args) *Server {
 
 // Start starts a new server on the given address
 func (s *Server) Start() {
+	go s.processMatches()
 	log.Println("Starting listener on", s.address)
 	log.Fatal(http.ListenAndServe(s.address, s.r))
+}
+
+func (s *Server) processMatches() {
+	log.Println("starting matches processor")
+	for m := range s.matches {
+		templater := s.templater.WithTemplate(m.match.Template())
+		logger := log.WithField("templater", templater).
+			WithField("payload", m.alertGroup).
+			WithField("match", m.match)
+
+		event := internal.MatchEvent
+		message, err := templater.Expand(internal.MatchEvent, m)
+
+		if err != nil {
+			logger.WithField("event", "match").
+				Warnf("failed to expand template: %s", err)
+		} else {
+			err = s.messenger.Send(event, message)
+			if err != nil {
+				logger.WithField("event", "match").
+					WithField("message", message).
+					Warnf("failed to send message: %s", err)
+			}
+		}
+
+		output, err := m.match.Execute()
+		payload := struct {
+			AlertGroup internal.AlertGroup
+			Match      matcher.Match
+			Output     string
+			Err        error
+		}{
+			m.alertGroup,
+			m.match,
+			output,
+			err,
+		}
+
+		logger = logger.WithField("payload", payload)
+		if err == nil {
+			event = internal.SuccessEvent
+			message, err = templater.Expand(internal.SuccessEvent, payload)
+			if err != nil {
+				logger.WithField("event", "success").
+					Warnf("failed to expand message: %s", err)
+			}
+		} else {
+			event = internal.FailureEvent
+			message, err = templater.Expand(internal.FailureEvent, payload)
+			if err != nil {
+				logger.WithField("event", "failure").
+					Warnf("failed to expand message: %s", err)
+			}
+		}
+
+		if err = s.messenger.Send(event, message); err != nil {
+			logger.WithField("message", message).
+				Errorf("failed to send message: %s", err)
+		}
+
+	}
 }
 
 func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
@@ -123,68 +189,11 @@ func (s *Server) webhookPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templater := s.templater.WithTemplate(match.Template())
-	logger := log.WithField("templater", templater).
-		WithField("payload", *alertGroup).
-		WithField("match", match)
-
-	matchPayload := struct {
-		AlertGroup internal.AlertGroup
-		Match      matcher.Match
-	}{
+	s.matches <- matchPayload{
 		*alertGroup,
 		match,
 	}
 
-	event := internal.MatchEvent
-	message, err := templater.Expand(internal.MatchEvent, matchPayload)
-
-	if err != nil {
-		logger.WithField("event", "match").
-			Warnf("failed to expand template: %s", err)
-	} else {
-		err = s.messenger.Send(event, message)
-		if err != nil {
-			logger.WithField("event", "match").
-				WithField("message", message).
-				Warnf("failed to send message: %s", err)
-		}
-	}
-
-	output, err := match.Execute()
-	payload := struct {
-		AlertGroup internal.AlertGroup
-		Match      matcher.Match
-		Output     string
-		Err        error
-	}{
-		*alertGroup,
-		match,
-		output,
-		err,
-	}
-
-	logger = logger.WithField("payload", payload)
-	if err == nil {
-		event = internal.SuccessEvent
-		message, err = templater.Expand(internal.SuccessEvent, payload)
-		if err != nil {
-			logger.WithField("event", "success").
-				Warnf("failed to expand message: %s", err)
-		}
-	} else {
-		event = internal.FailureEvent
-		message, err = templater.Expand(internal.FailureEvent, payload)
-		if err != nil {
-			logger.WithField("event", "failure").
-				Warnf("failed to expand message: %s", err)
-		}
-	}
-
-	if err = s.messenger.Send(event, message); err != nil {
-		logger.WithField("message", message).
-			Errorf("failed to send message: %s", err)
-	}
 }
 
 func (s *Server) healthyProbe(w http.ResponseWriter, r *http.Request) {
@@ -220,4 +229,9 @@ func (s *Server) LoadConfiguration() error {
 	}
 
 	return nil
+}
+
+type matchPayload struct {
+	alertGroup internal.AlertGroup
+	match      matcher.Match
 }

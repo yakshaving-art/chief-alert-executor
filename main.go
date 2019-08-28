@@ -18,6 +18,7 @@ func main() {
 	metricsPath := flag.String("metrics", "/metrics", "path in which to listen for metrics")
 	configFilename := flag.String("config", "config.yml", "configuration filename")
 	debug := flag.Bool("debug", false, "enable debug mode")
+	concurrency := flag.Int("concurrency", 10, "how many commands can be executed concurrently")
 
 	flag.Parse()
 
@@ -38,6 +39,7 @@ func main() {
 		Address:        *address,
 		MetricsPath:    *metricsPath,
 		ConfigFilename: *configFilename,
+		Concurrency:    *concurrency,
 		Messenger:      m,
 	})
 
