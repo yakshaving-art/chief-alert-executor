@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 
 	"gitlab.com/yakshaving.art/alertsnitch/version"
@@ -22,6 +20,12 @@ var (
 		Name:      "build_info",
 		Help:      "Build information",
 	}, []string{"version", "commit", "date"})
+
+	SlackUp = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "slack_up",
+		Help:      "Wether or not if slack notifications are enabled",
+	})
 )
 
 // Exported metrics
@@ -76,15 +80,22 @@ var (
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		Help:       "command execution seconds summary",
 	}, []string{"matcher", "successful"})
+	SlackNotificationsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: "slack",
+		Name:      "notifications_total",
+	}, []string{"kind", "status"})
 )
 
 func init() {
-	bootTime.Set(float64(time.Now().Unix()))
-
+	bootTime.SetToCurrentTime()
 	buildInfo.WithLabelValues(version.Version, version.Commit, version.Date).Set(1)
+	SlackUp.Set(0)
 
-	prometheus.MustRegister(bootTime)
-	prometheus.MustRegister(buildInfo)
+	prometheus.MustRegister(bootTime,
+		buildInfo,
+		SlackUp,
+	)
 
 	prometheus.MustRegister(
 		AlertsReceivedTotal,
