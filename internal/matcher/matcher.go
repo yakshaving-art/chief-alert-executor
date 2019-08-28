@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -42,9 +43,16 @@ type oneAlertMatcher struct {
 	labels      map[string]*regexp.Regexp
 	annotations map[string]*regexp.Regexp
 
+<<<<<<< Updated upstream
 	template *internal.MessageTemplate
 	cmd      string
 	args     []string
+=======
+	cmd  string
+	args []string
+
+	timeout int
+>>>>>>> Stashed changes
 }
 
 func (m oneAlertMatcher) Match(ag internal.AlertGroup) bool {
@@ -116,6 +124,7 @@ func (m matcherMap) Match(ag internal.AlertGroup) Match {
 				matcherName: matcher.matcherName,
 				cmd:         matcher.cmd,
 				args:        matcher.args,
+				timeout:     time.Duration(matcher.timeout) * time.Second,
 			}
 		}
 	}
@@ -137,8 +146,10 @@ type cmdExecutor struct {
 	matcherName string
 	cmd         string
 	args        []string
+	timeout     time.Duration
 }
 
+<<<<<<< Updated upstream
 func (c cmdExecutor) Name() string {
 	return c.matcherName
 }
@@ -148,8 +159,14 @@ func (c cmdExecutor) Template() *internal.MessageTemplate {
 }
 
 func (c cmdExecutor) Execute() (string, error) {
+=======
+func (c cmdExecutor) Execute() {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+>>>>>>> Stashed changes
 	startTime := time.Now()
-	cmd := exec.Command(c.cmd, c.args...)
+	cmd := exec.CommandContext(ctx, c.cmd, c.args...)
 	b, err := cmd.CombinedOutput()
 	executionTime := time.Now().Sub(startTime)
 
@@ -200,6 +217,10 @@ func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error)
 		}
 		annotations[a] = reg
 	}
+	timeout := mc.Timeout
+	if timeout == 0 {
+		timeout = 30 // By default, 30 seconds of command execution timeout
+	}
 
 	return &oneAlertMatcher{
 		labels:      labels,
@@ -209,5 +230,6 @@ func newAlertMatcher(mc internal.MatcherConfiguration) (*oneAlertMatcher, error)
 		template:    mc.Template,
 		cmd:         mc.Command,
 		args:        mc.Arguments,
+		timeout:     timeout,
 	}, nil
 }
