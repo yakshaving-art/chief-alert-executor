@@ -1,4 +1,4 @@
-FROM registry.yakshaving.art:443/tools/multiarch-alpine-toolset:latest
+FROM registry.yakshaving.art:443/tools/multiarch-alpine-toolset:amd64-3.9
 
 COPY chief-alert-executor-amd64 /chief-alert-executor
 
