@@ -21,6 +21,20 @@ var (
 		Help:      "Build information",
 	}, []string{"version", "commit", "date"})
 
+	LastConfigReloadTime = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "last_configuration_reload_seconds",
+			Help:      "unix timestamp of when the configuration was last reloaded",
+		},
+	)
+	LastConfigReloadSuccessful = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Name:      "last_configuration_reload_successful",
+			Help:      "wether or not the last configuration was successfully reloaded",
+		},
+	)
 	SlackUp = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "slack_up",
@@ -94,6 +108,8 @@ func init() {
 
 	prometheus.MustRegister(bootTime,
 		buildInfo,
+		LastConfigReloadTime,
+		LastConfigReloadSuccessful,
 		SlackUp,
 	)
 
